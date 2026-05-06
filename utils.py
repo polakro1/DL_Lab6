@@ -7,43 +7,63 @@ import os
 
 class EMA:
     """
-    Exponential Moving Average of model weights.
-    Crucial for stabilizing diffusion models and reaching high accuracy.
+    Exponential Moving Average with Dynamic Decay.
+    Optimized for memory efficiency (in-place operations) and includes buffer synchronization.
     """
 
-    def __init__(self, model, decay=0.9999):
+    def __init__(self, model, target_decay=0.9999):
         self.model = model
-        self.decay = decay
-        self.shadow = self._make_shadow()
-
-    def _make_shadow(self):
-        shadow = {}
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                shadow[name] = param.data.clone()
-        return shadow
-
-    def update(self):
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                new_average = (
-                    1.0 - self.decay
-                ) * param.data + self.decay * self.shadow[name]
-                self.shadow[name] = new_average.clone()
-
-    def apply_shadow(self):
-        """Copies shadow weights to the actual model for evaluation."""
+        self.target_decay = target_decay
+        self.step = 0
+        self.shadow = {}
         self.original_weights = {}
+        self._register_shadow()
+
+    @torch.no_grad()
+    def _register_shadow(self):
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                self.shadow[name] = param.data.clone()
+
+        for name, buffer in self.model.named_buffers():
+            self.shadow[name] = buffer.data.clone()
+
+    @torch.no_grad()
+    def update(self):
+        self.step += 1
+        decay = min(self.target_decay, (1.0 + self.step) / (10.0 + self.step))
+
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                # In-place linear interpolation prevents memory fragmentation
+                # shadow = shadow + (1 - decay) * (param - shadow)
+                self.shadow[name].lerp_(param.data, 1.0 - decay)
+
+        for name, buffer in self.model.named_buffers():
+            if buffer.is_floating_point():
+                self.shadow[name].lerp_(buffer.data, 1.0 - decay)
+            else:
+                self.shadow[name].copy_(buffer.data)
+
+    @torch.no_grad()
+    def apply_shadow(self):
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 self.original_weights[name] = param.data.clone()
                 param.data.copy_(self.shadow[name])
 
+        for name, buffer in self.model.named_buffers():
+            self.original_weights[name] = buffer.data.clone()
+            buffer.data.copy_(self.shadow[name])
+
+    @torch.no_grad()
     def restore_weights(self):
-        """Restores training weights after evaluation."""
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 param.data.copy_(self.original_weights[name])
+
+        for name, buffer in self.model.named_buffers():
+            buffer.data.copy_(self.original_weights[name])
 
 
 def save_result_grids(images, path, nrow=8):

@@ -35,12 +35,9 @@ class DDPM(nn.Module):
         alphas = 1.0 - betas
         alphas_cumprod = torch.cumprod(alphas, dim=0)
 
-        alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
-
         # Register buffers to avoid moving them to device manually
         self.register_buffer("betas", betas)
         self.register_buffer("alphas_cumprod", alphas_cumprod)
-        self.register_buffer("alphas_cumprod_prev", alphas_cumprod_prev)
         self.register_buffer("sqrt_alphas_cumprod", torch.sqrt(alphas_cumprod))
         self.register_buffer(
             "sqrt_one_minus_alphas_cumprod", torch.sqrt(1.0 - alphas_cumprod)
@@ -94,6 +91,9 @@ class DDPM(nn.Module):
             for i, t in enumerate(tqdm(time_steps, desc="DDIM Sampling")):
                 t_b = torch.full((b,), t, device=device, dtype=torch.long)
 
+                t_prev = t - step_size
+                t_prev_b = torch.full((b,), t_prev, device=device, dtype=torch.long)
+
                 # CFG: Batch conditioning and unconditional passes together
                 x_in = torch.cat([x, x], dim=0)
                 t_in = torch.cat([t_b, t_b], dim=0)
@@ -110,8 +110,8 @@ class DDPM(nn.Module):
                 # DDIM Math
                 alpha = extract(self.alphas_cumprod, t_b, x.shape)
                 alpha_prev = (
-                    extract(self.alphas_cumprod_prev, t_b, x.shape)
-                    if t > 0
+                    extract(self.alphas_cumprod, t_prev_b, x.shape)
+                    if t_prev > 0
                     else torch.ones_like(alpha)
                 )
 
@@ -123,7 +123,8 @@ class DDPM(nn.Module):
                 pred_x0 = (x - torch.sqrt(1 - alpha) * pred_noise) / torch.sqrt(alpha)
                 pred_x0 = torch.clamp(pred_x0, -1.0, 1.0)
 
-                dir_xt = torch.sqrt(1 - alpha_prev - sigma**2) * pred_noise
+                dir_xt_radicand = 1 - alpha_prev - sigma**2
+                dir_xt = torch.sqrt(torch.clamp(dir_xt_radicand, min=0.0)) * pred_noise
                 noise = torch.randn_like(x) if t > 0 and eta > 0 else 0.0
 
                 x = torch.sqrt(alpha_prev) * pred_x0 + dir_xt + sigma * noise
