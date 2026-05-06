@@ -102,7 +102,7 @@ def train(args):
 
         # Logging
         avg_loss = epoch_loss / len(train_loader)
-        wandb.log({"train_loss": avg_loss, "epoch": epoch})
+        wandb.log({"train_loss": avg_loss, "epoch": epoch + 1})
 
         # Periodic Evaluation (e.g., every 10 epochs)
         if (epoch + 1) % eval_epoch == 0:
@@ -125,7 +125,7 @@ def train(args):
 
                 # ResNet18 Accuracy Evaluation[cite: 1, 3]
                 acc = evaluator.eval(samples, test_labels)
-                wandb.log({"test_acc": acc, "epoch": epoch})
+                wandb.log({"test_acc": acc, "epoch": epoch + 1})
                 print(f"\nEpoch {epoch+1} Test Accuracy: {acc:.4f}")
 
                 # Save best model
@@ -136,7 +136,7 @@ def train(args):
                         {
                             "model_state_dict": ema.shadow,
                             "optimizer_state_dict": optimizer.state_dict(),
-                            "epoch": epoch,
+                            "epoch": epoch + 1,
                             "acc": acc,
                         },
                         "best_model.pth",
