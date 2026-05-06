@@ -1,0 +1,47 @@
+# --- Data and Datasets ---
+# Strictly forbidden to upload iclevr.zip or raw images
+data/iclevr
+images/
+iclevr/
+*.zip
+*.json
+!objects.json
+!train.json
+!test.json
+!new_test.json
+*.png
+
+# --- Model Checkpoints and Weights ---
+# Do not upload pretrained evaluator weights or your trained models
+*.pth
+*.ckpt
+best_model.pth
+checkpoint.pth
+
+# --- Training Outputs and Logs ---
+# Results, grids, and experiment tracking
+results/
+wandb/
+runs/
+*.log
+
+# --- Python Environment and Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+build/
+dist/
+
+# --- IDE and System Files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Reports ---
+# Usually, you only want to track the source, but if it's a final PDF:
+# !Lab6_Report.pdf
