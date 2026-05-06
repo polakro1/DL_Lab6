@@ -62,7 +62,7 @@ def train(args):
     # Model, Diffusion, EMA and Evaluator
     model = UNet(base_channels=base_channels).to(device)
     diffusion = DDPM(model, timesteps=timesteps).to(device)
-    ema = EMA(model, decay=ema_decay)
+    ema = EMA(model, decay=ema_decay, warmup_steps=args.ema_warmup_steps)
     evaluator = evaluation_model()
 
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
@@ -172,6 +172,8 @@ if __name__ == "__main__":
         default=5,
         help="Epoch interval for evaluation",
     )
+    parser.add_argument("--ema_decay", type=float, default=0.9999)
+    parser.add_argument("--ema_warmup_steps", type=int, default=100)
     args = parser.parse_args()
 
     train(args=args)

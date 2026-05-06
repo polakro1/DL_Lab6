@@ -11,9 +11,10 @@ class EMA:
     Optimized for memory efficiency (in-place operations) and includes buffer synchronization.
     """
 
-    def __init__(self, model, target_decay=0.9999):
+    def __init__(self, model, target_decay=0.9999, warmup_steps=100):
         self.model = model
         self.target_decay = target_decay
+        self.warmup_steps = warmup_steps
         self.step = 0
         self.shadow = {}
         self.original_weights = {}
@@ -31,7 +32,9 @@ class EMA:
     @torch.no_grad()
     def update(self):
         self.step += 1
-        decay = min(self.target_decay, (1.0 + self.step) / (10.0 + self.step))
+        decay = min(
+            self.target_decay, (1.0 + self.step) / (self.warmup_steps + self.step)
+        )
 
         for name, param in self.model.named_parameters():
             if param.requires_grad:
