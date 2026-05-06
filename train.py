@@ -92,10 +92,15 @@ def train(args):
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
+            scale_before = scaler.get_scale()
+
             scaler.step(optimizer)
             scaler.update()
 
-            ema.update()  # Shadow weights update
+            scale_after = scaler.get_scale()
+
+            if scale_before <= scale_after:
+                ema.update()
 
             epoch_loss += loss.item()
             pbar.set_postfix(loss=loss.item())

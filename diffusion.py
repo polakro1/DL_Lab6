@@ -111,7 +111,7 @@ class DDPM(nn.Module):
                 alpha = extract(self.alphas_cumprod, t_b, x.shape)
                 alpha_prev = (
                     extract(self.alphas_cumprod, t_prev_b, x.shape)
-                    if t_prev > 0
+                    if t_prev >= 0
                     else torch.ones_like(alpha)
                 )
 
@@ -124,7 +124,7 @@ class DDPM(nn.Module):
                 pred_x0 = torch.clamp(pred_x0, -1.0, 1.0)
 
                 dir_xt_radicand = 1 - alpha_prev - sigma**2
-                dir_xt = torch.sqrt(torch.clamp(dir_xt_radicand, min=0.0)) * pred_noise
+                dir_xt = torch.sqrt(torch.clamp(dir_xt_radicand, min=1e-7)) * pred_noise
                 noise = torch.randn_like(x) if t > 0 and eta > 0 else 0.0
 
                 x = torch.sqrt(alpha_prev) * pred_x0 + dir_xt + sigma * noise
