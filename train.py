@@ -62,7 +62,7 @@ def train(args):
     # Model, Diffusion, EMA and Evaluator
     model = UNet(base_channels=base_channels).to(device)
     diffusion = DDPM(model, timesteps=timesteps).to(device)
-    ema = EMA(model, decay=ema_decay, warmup_steps=args.ema_warmup_steps)
+    ema = EMA(model, target_decay=ema_decay, warmup_steps=args.ema_warmup_steps)
     evaluator = evaluation_model()
 
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
@@ -163,6 +163,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--base_channels", type=int, default=64)
     parser.add_argument("--ema_decay", type=float, default=0.9999)
+    parser.add_argument("--ema_warmup_steps", type=int, default=100)
     parser.add_argument("--timesteps", type=int, default=1000)
     parser.add_argument("--cfg_dropout", type=float, default=0.1)
     parser.add_argument("--run_name", type=str, default="Deep-Learning-Lab6")
@@ -172,8 +173,6 @@ if __name__ == "__main__":
         default=5,
         help="Epoch interval for evaluation",
     )
-    parser.add_argument("--ema_decay", type=float, default=0.9999)
-    parser.add_argument("--ema_warmup_steps", type=int, default=100)
     args = parser.parse_args()
 
     train(args=args)
